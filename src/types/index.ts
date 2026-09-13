@@ -51,3 +51,6 @@ export interface AuthTokens {
   refreshToken: string;
   expiresAt: number; // Unix timestamp in ms
 }
+
+export type LyricFontSize = 'small' | 'medium' | 'large' | 'xlarge';
+

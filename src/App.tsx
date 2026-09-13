@@ -10,8 +10,10 @@ import { useNowPlaying } from './hooks/useNowPlaying';
 import { useLyricSync } from './hooks/useLyricSync';
 import { handleSpotifyCallback, isAuthenticated, getStoredClientId } from './services/spotifyAuth';
 import { DEMO_TRACKS } from './mock/demoData';
+import { LyricFontSize } from './types';
 
 const OFFSET_STORAGE_KEY = 'music_cast_lyric_offset';
+const FONT_SIZE_STORAGE_KEY = 'music_cast_lyric_font_size';
 
 export const App: React.FC = () => {
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -24,6 +26,11 @@ export const App: React.FC = () => {
   const [offsetMs, setOffsetMs] = useState<number>(() => {
     const saved = localStorage.getItem(OFFSET_STORAGE_KEY);
     return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [fontSize, setFontSize] = useState<LyricFontSize>(() => {
+    const saved = localStorage.getItem(FONT_SIZE_STORAGE_KEY) as LyricFontSize;
+    return saved && ['small', 'medium', 'large', 'xlarge'].includes(saved) ? saved : 'medium';
   });
 
   // WakeLock
@@ -75,6 +82,11 @@ export const App: React.FC = () => {
   const handleOffsetChange = (newOffset: number) => {
     setOffsetMs(newOffset);
     localStorage.setItem(OFFSET_STORAGE_KEY, newOffset.toString());
+  };
+
+  const handleFontSizeChange = (newSize: LyricFontSize) => {
+    setFontSize(newSize);
+    localStorage.setItem(FONT_SIZE_STORAGE_KEY, newSize);
   };
 
   // 楽曲情報の取得
@@ -159,6 +171,8 @@ export const App: React.FC = () => {
             isLoading={lyricsLoading}
             onSeek={seek}
             isLyricsMode={isLyricsMode}
+            fontSize={fontSize}
+            onFontSizeChange={handleFontSizeChange}
           />
         }
         miniPlayer={
@@ -182,6 +196,8 @@ export const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         offsetMs={offsetMs}
         onOffsetChange={handleOffsetChange}
+        fontSize={fontSize}
+        onFontSizeChange={handleFontSizeChange}
       />
     </>
   );

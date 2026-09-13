@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, ExternalLink, Sliders, KeyRound, Info, LogIn, Share2 } from 'lucide-react';
+import { X, Copy, Check, ExternalLink, Sliders, KeyRound, Info, LogIn, Share2, Type } from 'lucide-react';
 import { getStoredClientId, setStoredClientId, getRedirectUri, initiateSpotifyLogin, isAuthenticated } from '../services/spotifyAuth';
+import { LyricFontSize } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   offsetMs: number;
   onOffsetChange: (offset: number) => void;
+  fontSize: LyricFontSize;
+  onFontSizeChange: (fontSize: LyricFontSize) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,6 +17,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   offsetMs,
   onOffsetChange,
+  fontSize,
+  onFontSizeChange,
 }) => {
   const [clientId, setClientId] = useState(getStoredClientId());
   const [copied, setCopied] = useState(false);
@@ -156,7 +161,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* 4. ガイド情報 */}
+        {/* 4. 歌詞の文字サイズ設定 */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+              <Type className="w-4 h-4 text-spotify-green" />
+              歌詞の文字サイズ
+            </label>
+            <span className="text-xs font-medium text-neutral-400">
+              {fontSize === 'small' && '小 (85%)'}
+              {fontSize === 'medium' && '標準 (100%)'}
+              {fontSize === 'large' && '大 (120%)'}
+              {fontSize === 'xlarge' && '特大 (140%)'}
+            </span>
+          </div>
+          <p className="text-xs text-neutral-400 mb-3">
+            歌詞表示のフォントサイズをお好みに合わせて変更できます。
+          </p>
+          <div className="grid grid-cols-4 gap-2 bg-neutral-900 p-1.5 rounded-xl border border-white/10">
+            {(
+              [
+                { key: 'small', label: '小', desc: '85%' },
+                { key: 'medium', label: '標準', desc: '100%' },
+                { key: 'large', label: '大', desc: '120%' },
+                { key: 'xlarge', label: '特大', desc: '140%' },
+              ] as const
+            ).map(({ key, label, desc }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onFontSizeChange(key)}
+                className={`py-2 px-1 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
+                  fontSize === key
+                    ? 'bg-spotify-green text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>{label}</span>
+                <span className={`text-[10px] font-normal ${fontSize === key ? 'text-black/70' : 'text-neutral-500'}`}>
+                  {desc}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. ガイド情報 */}
         <div className="p-3.5 bg-white/5 rounded-xl text-xs text-neutral-300 space-y-2 border border-white/5">
           <div className="flex items-center gap-1.5 font-semibold text-white">
             <Info className="w-4 h-4 text-blue-400" />

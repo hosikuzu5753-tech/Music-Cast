@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Mic2, Radio, AlignLeft, RefreshCw, ChevronDown } from 'lucide-react';
-import { LyricsData } from '../types';
+import { Mic2, Radio, AlignLeft, RefreshCw, ChevronDown, Type } from 'lucide-react';
+import { LyricsData, LyricFontSize } from '../types';
 
 interface LyricViewerProps {
   lyricsData: LyricsData | null;
@@ -9,7 +9,76 @@ interface LyricViewerProps {
   isLoading: boolean;
   onSeek: (ms: number) => void;
   isLyricsMode?: boolean;
+  fontSize?: LyricFontSize;
+  onFontSizeChange?: (size: LyricFontSize) => void;
 }
+
+const FONT_SIZE_STYLES: Record<LyricFontSize, {
+  label: string;
+  next: LyricFontSize;
+  lyricsMode: {
+    active: string;
+    inactive: string;
+  };
+  normalMode: {
+    active: string;
+    inactive: string;
+  };
+  plain: string;
+}> = {
+  small: {
+    label: '小',
+    next: 'medium',
+    lyricsMode: {
+      active: 'text-xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
+      inactive: 'text-base sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-xs',
+    },
+    normalMode: {
+      active: 'text-lg sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-sm',
+      inactive: 'text-xs sm:text-base md:text-xl lg:text-2xl landscape:max-md:text-[11px]',
+    },
+    plain: 'text-xs sm:text-sm md:text-base',
+  },
+  medium: {
+    label: '標準',
+    next: 'large',
+    lyricsMode: {
+      active: 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl landscape:max-md:text-lg',
+      inactive: 'text-lg sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-sm',
+    },
+    normalMode: {
+      active: 'text-xl sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-base',
+      inactive: 'text-sm sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-xs',
+    },
+    plain: 'text-sm sm:text-base md:text-lg',
+  },
+  large: {
+    label: '大',
+    next: 'xlarge',
+    lyricsMode: {
+      active: 'text-3xl sm:text-5xl md:text-6xl lg:text-7xl landscape:max-md:text-xl',
+      inactive: 'text-xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
+    },
+    normalMode: {
+      active: 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-lg',
+      inactive: 'text-base sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-sm',
+    },
+    plain: 'text-base sm:text-lg md:text-xl',
+  },
+  xlarge: {
+    label: '特大',
+    next: 'small',
+    lyricsMode: {
+      active: 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl landscape:max-md:text-2xl',
+      inactive: 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl landscape:max-md:text-lg',
+    },
+    normalMode: {
+      active: 'text-3xl sm:text-5xl md:text-6xl lg:text-7xl landscape:max-md:text-xl',
+      inactive: 'text-lg sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
+    },
+    plain: 'text-lg sm:text-xl md:text-2xl',
+  },
+};
 
 export const LyricViewer: React.FC<LyricViewerProps> = ({
   lyricsData,
@@ -17,6 +86,8 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
   isLoading,
   onSeek,
   isLyricsMode = false,
+  fontSize = 'medium',
+  onFontSizeChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -148,15 +219,29 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
     );
   }
 
+  const currentStyles = FONT_SIZE_STYLES[fontSize] || FONT_SIZE_STYLES.medium;
+
   // 4. プレーンテキスト歌詞（同期なし）
   if (lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics) {
     return (
       <div className="relative h-full min-h-0 flex flex-col bg-neutral-900/20 rounded-3xl border border-white/5 backdrop-blur-xl p-4 sm:p-6 md:p-8 overflow-hidden">
-        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-400 mb-3 pb-2 border-b border-white/10">
-          <AlignLeft className="w-4 h-4" />
-          <span>通常歌詞（タイムコード同期なし）</span>
+        <div className="flex items-center justify-between text-xs font-semibold text-neutral-400 mb-3 pb-2 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <AlignLeft className="w-4 h-4" />
+            <span>通常歌詞（タイムコード同期なし）</span>
+          </div>
+          {onFontSizeChange && (
+            <button
+              onClick={() => onFontSizeChange(currentStyles.next)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95"
+              title={`文字サイズ: ${currentStyles.label}（クリックで切り替え）`}
+            >
+              <Type className="w-3.5 h-3.5 text-spotify-green" />
+              <span className="text-[11px]">{currentStyles.label}</span>
+            </button>
+          )}
         </div>
-        <div className="overflow-y-auto flex-1 pr-2 space-y-4 text-neutral-200 text-sm sm:text-base md:text-lg leading-relaxed whitespace-pre-line font-medium selection:bg-spotify-green/30">
+        <div className={`overflow-y-auto flex-1 pr-2 space-y-4 text-neutral-200 ${currentStyles.plain} leading-relaxed whitespace-pre-line font-medium selection:bg-spotify-green/30`}>
           {lyricsData.plainLyrics}
         </div>
       </div>
@@ -169,6 +254,18 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
       {/* 上下フェードグラデーションマスク */}
       <div className="absolute top-0 left-0 right-0 h-10 sm:h-16 md:h-20 landscape:max-md:h-8 bg-gradient-to-b from-[#121212] via-[#121212]/80 to-transparent pointer-events-none z-10" />
       <div className="absolute bottom-0 left-0 right-0 h-10 sm:h-16 md:h-20 landscape:max-md:h-8 bg-gradient-to-t from-[#121212] via-[#121212]/80 to-transparent pointer-events-none z-10" />
+
+      {/* 右上の文字サイズクイック切替ボタン */}
+      {onFontSizeChange && (
+        <button
+          onClick={() => onFontSizeChange(currentStyles.next)}
+          className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95 shadow-lg"
+          title={`文字サイズ: ${currentStyles.label}（クリックで「${FONT_SIZE_STYLES[currentStyles.next].label}」へ変更）`}
+        >
+          <Type className="w-3 h-3 text-spotify-green" />
+          <span className="text-[10px] font-medium">{currentStyles.label}</span>
+        </button>
+      )}
 
       {/* スクロール領域 */}
       <div
@@ -203,11 +300,11 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
                 className={
                   isLyricsMode
                     ? isActive
-                      ? 'text-white font-black text-2xl sm:text-4xl md:text-5xl lg:text-6xl landscape:max-md:text-lg tracking-tight leading-snug drop-shadow-[0_4px_24px_rgba(255,255,255,0.4)]'
-                      : 'text-neutral-400 font-extrabold text-lg sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-sm tracking-tight leading-snug hover:text-neutral-200'
+                      ? `text-white font-black ${currentStyles.lyricsMode.active} tracking-tight leading-snug drop-shadow-[0_4px_24px_rgba(255,255,255,0.4)]`
+                      : `text-neutral-400 font-extrabold ${currentStyles.lyricsMode.inactive} tracking-tight leading-snug hover:text-neutral-200`
                     : isActive
-                    ? 'text-white font-black text-xl sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-base tracking-tight leading-snug drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)]'
-                    : 'text-neutral-400 font-bold text-sm sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-xs tracking-tight leading-snug hover:text-neutral-200'
+                    ? `text-white font-black ${currentStyles.normalMode.active} tracking-tight leading-snug drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)]`
+                    : `text-neutral-400 font-bold ${currentStyles.normalMode.inactive} tracking-tight leading-snug hover:text-neutral-200`
                 }
               >
                 {line.text || '•••'}
