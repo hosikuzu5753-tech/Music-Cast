@@ -49,28 +49,30 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="h-13 md:h-16 landscape:max-md:h-10 px-3 md:px-8 flex items-center justify-between z-20 backdrop-blur-md bg-black/40 border-b border-white/5 shrink-0 select-none transition-all duration-200"
+      className="w-full shrink-0 z-20 backdrop-blur-md bg-black/40 border-b border-white/5 select-none transition-all duration-200"
       style={{
-        paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
-        paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
       }}
     >
-      {/* ロゴとアプリタイトル */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-gradient-to-tr from-spotify-green to-emerald-400 flex items-center justify-center shadow-lg shadow-spotify-green/20 shrink-0">
-          <Music className="w-3.5 h-3.5 md:w-4 md:h-4 text-black font-extrabold" />
+      <div className="h-12 md:h-14 landscape:max-md:h-10 flex items-center justify-between">
+        {/* ロゴとアプリタイトル */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-gradient-to-tr from-spotify-green to-emerald-400 flex items-center justify-center shadow-lg shadow-spotify-green/20 shrink-0">
+            <Music className="w-3.5 h-3.5 md:w-4 md:h-4 text-black font-extrabold" />
+          </div>
+          <div>
+            <span className="text-sm md:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+              <span className="hidden xs:inline sm:inline">Music Cast</span>
+              {isDemoMode && (
+                <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full">
+                  Demo
+                </span>
+              )}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="text-sm md:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-            <span className="hidden xs:inline sm:inline">Music Cast</span>
-            {isDemoMode && (
-              <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full">
-                Demo
-              </span>
-            )}
-          </span>
-        </div>
-      </div>
 
       {/* アクションボタン群 */}
       <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
@@ -160,6 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 };

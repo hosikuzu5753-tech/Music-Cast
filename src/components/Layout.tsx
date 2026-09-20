@@ -21,15 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({
   isLyricsMode,
 }) => {
   return (
-    <div
-      className="relative w-full h-full h-[100dvh] overflow-hidden bg-[#121212] text-white flex flex-col select-none overscroll-none"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        paddingLeft: 'env(safe-area-inset-left, 0px)',
-        paddingRight: 'env(safe-area-inset-right, 0px)',
-      }}
-    >
+    <div className="relative w-full h-full h-[100dvh] overflow-hidden bg-[#121212] text-white flex flex-col select-none overscroll-none">
       {/* 幻想的なアンビエント背景（アルバムアートを元にした動的ブラー） */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <AnimatePresence mode="wait">
@@ -55,7 +47,14 @@ export const Layout: React.FC<LayoutProps> = ({
       {header}
 
       {/* メイン表示領域 */}
-      <main className="relative z-10 flex-1 min-h-0 overflow-hidden p-2 sm:p-4 md:p-6 flex flex-col">
+      <main
+        className="relative z-10 flex-1 min-h-0 overflow-hidden p-2 sm:p-4 md:p-6 flex flex-col"
+        style={{
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
+          paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(0.5rem, env(safe-area-inset-right, 0px))',
+        }}
+      >
         {/* ========================================================
             1. 横向き表示（Landscape: iPhone横 & iPad横）
             - 左右2カラム強制分割

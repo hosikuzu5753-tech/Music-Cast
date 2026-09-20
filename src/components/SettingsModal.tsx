@@ -161,46 +161,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* 4. 歌詞の文字サイズ設定 */}
+        {/* 4. 歌詞の文字サイズ設定 (1〜100) */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
               <Type className="w-4 h-4 text-spotify-green" />
               歌詞の文字サイズ
             </label>
-            <span className="text-xs font-medium text-neutral-400">
-              {fontSize === 'small' && '小 (85%)'}
-              {fontSize === 'medium' && '標準 (100%)'}
-              {fontSize === 'large' && '大 (120%)'}
-              {fontSize === 'xlarge' && '特大 (140%)'}
+            <span className="text-xs font-mono text-spotify-green font-semibold">
+              {fontSize} / 100 ({fontSize <= 50 ? Math.round((0.5 + ((fontSize - 1) / 49) * 0.5) * 100) : Math.round((1.0 + ((fontSize - 50) / 50) * 1.0) * 100)}%)
             </span>
           </div>
           <p className="text-xs text-neutral-400 mb-3">
-            歌詞表示のフォントサイズをお好みに合わせて変更できます。
+            スライダーまたは数値入力で、歌詞のフォントサイズを 1 〜 100 の範囲で自由に変更できます（標準: 50）。
           </p>
-          <div className="grid grid-cols-4 gap-2 bg-neutral-900 p-1.5 rounded-xl border border-white/10">
+
+          {/* スライダー & 数値入力 & リセット */}
+          <div className="flex items-center gap-3 mb-3 bg-neutral-900/90 p-3 rounded-xl border border-white/10">
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              value={fontSize}
+              onChange={(e) => onFontSizeChange(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+              className="flex-1 accent-spotify-green cursor-pointer h-2 bg-neutral-800 rounded-lg"
+            />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={fontSize}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    onFontSizeChange(Math.max(1, Math.min(100, val)));
+                  }
+                }}
+                className="w-14 px-2 py-1 bg-black/60 border border-white/10 rounded-lg text-center text-xs font-mono text-white focus:outline-none focus:border-spotify-green"
+              />
+              <button
+                type="button"
+                onClick={() => onFontSizeChange(50)}
+                className="text-xs px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded text-neutral-300 hover:text-white transition shrink-0 font-medium"
+                title="標準サイズ (50) に戻す"
+              >
+                標準
+              </button>
+            </div>
+          </div>
+
+          {/* プリセットボタン */}
+          <div className="grid grid-cols-5 gap-1.5">
             {(
               [
-                { key: 'small', label: '小', desc: '85%' },
-                { key: 'medium', label: '標準', desc: '100%' },
-                { key: 'large', label: '大', desc: '120%' },
-                { key: 'xlarge', label: '特大', desc: '140%' },
+                { val: 1, label: '最小', desc: '1' },
+                { val: 30, label: '小', desc: '30' },
+                { val: 50, label: '標準', desc: '50' },
+                { val: 75, label: '大', desc: '75' },
+                { val: 100, label: '最大', desc: '100' },
               ] as const
-            ).map(({ key, label, desc }) => (
+            ).map(({ val, label, desc }) => (
               <button
-                key={key}
+                key={val}
                 type="button"
-                onClick={() => onFontSizeChange(key)}
-                className={`py-2 px-1 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
-                  fontSize === key
-                    ? 'bg-spotify-green text-black shadow-md'
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                onClick={() => onFontSizeChange(val)}
+                className={`py-1.5 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center gap-0.5 transition border ${
+                  fontSize === val
+                    ? 'bg-spotify-green/20 text-spotify-green border-spotify-green/40 shadow-sm'
+                    : 'bg-white/5 text-neutral-400 border-white/5 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <span>{label}</span>
-                <span className={`text-[10px] font-normal ${fontSize === key ? 'text-black/70' : 'text-neutral-500'}`}>
-                  {desc}
-                </span>
+                <span className="text-[10px] opacity-70 font-mono">{desc}</span>
               </button>
             ))}
           </div>

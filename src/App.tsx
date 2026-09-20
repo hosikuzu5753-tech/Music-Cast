@@ -29,8 +29,19 @@ export const App: React.FC = () => {
   });
 
   const [fontSize, setFontSize] = useState<LyricFontSize>(() => {
-    const saved = localStorage.getItem(FONT_SIZE_STORAGE_KEY) as LyricFontSize;
-    return saved && ['small', 'medium', 'large', 'xlarge'].includes(saved) ? saved : 'medium';
+    const saved = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
+    if (saved) {
+      const num = parseInt(saved, 10);
+      if (!isNaN(num) && num >= 1 && num <= 100) {
+        return num;
+      }
+      // 以前のプリセット文字列設定からのマイグレーション
+      if (saved === 'small') return 30;
+      if (saved === 'medium') return 50;
+      if (saved === 'large') return 75;
+      if (saved === 'xlarge') return 100;
+    }
+    return 50;
   });
 
   // WakeLock
@@ -85,8 +96,9 @@ export const App: React.FC = () => {
   };
 
   const handleFontSizeChange = (newSize: LyricFontSize) => {
-    setFontSize(newSize);
-    localStorage.setItem(FONT_SIZE_STORAGE_KEY, newSize);
+    const clamped = Math.max(1, Math.min(100, isNaN(newSize) ? 50 : newSize));
+    setFontSize(clamped);
+    localStorage.setItem(FONT_SIZE_STORAGE_KEY, clamped.toString());
   };
 
   // 楽曲情報の取得

@@ -52,5 +52,5 @@ export interface AuthTokens {
   expiresAt: number; // Unix timestamp in ms
 }
 
-export type LyricFontSize = 'small' | 'medium' | 'large' | 'xlarge';
+export type LyricFontSize = number; // 1 〜 100
 

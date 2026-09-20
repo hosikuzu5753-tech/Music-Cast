@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Mic2, Radio, AlignLeft, RefreshCw, ChevronDown, Type } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mic2, Radio, AlignLeft, RefreshCw, ChevronDown, Type, Minus, Plus, X } from 'lucide-react';
 import { LyricsData, LyricFontSize } from '../types';
 
 interface LyricViewerProps {
@@ -13,72 +13,20 @@ interface LyricViewerProps {
   onFontSizeChange?: (size: LyricFontSize) => void;
 }
 
-const FONT_SIZE_STYLES: Record<LyricFontSize, {
-  label: string;
-  next: LyricFontSize;
-  lyricsMode: {
-    active: string;
-    inactive: string;
-  };
-  normalMode: {
-    active: string;
-    inactive: string;
-  };
-  plain: string;
-}> = {
-  small: {
-    label: '小',
-    next: 'medium',
-    lyricsMode: {
-      active: 'text-xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
-      inactive: 'text-base sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-xs',
-    },
-    normalMode: {
-      active: 'text-lg sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-sm',
-      inactive: 'text-xs sm:text-base md:text-xl lg:text-2xl landscape:max-md:text-[11px]',
-    },
-    plain: 'text-xs sm:text-sm md:text-base',
-  },
-  medium: {
-    label: '標準',
-    next: 'large',
-    lyricsMode: {
-      active: 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl landscape:max-md:text-lg',
-      inactive: 'text-lg sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-sm',
-    },
-    normalMode: {
-      active: 'text-xl sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-base',
-      inactive: 'text-sm sm:text-xl md:text-2xl lg:text-3xl landscape:max-md:text-xs',
-    },
-    plain: 'text-sm sm:text-base md:text-lg',
-  },
-  large: {
-    label: '大',
-    next: 'xlarge',
-    lyricsMode: {
-      active: 'text-3xl sm:text-5xl md:text-6xl lg:text-7xl landscape:max-md:text-xl',
-      inactive: 'text-xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
-    },
-    normalMode: {
-      active: 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-lg',
-      inactive: 'text-base sm:text-2xl md:text-3xl lg:text-4xl landscape:max-md:text-sm',
-    },
-    plain: 'text-base sm:text-lg md:text-xl',
-  },
-  xlarge: {
-    label: '特大',
-    next: 'small',
-    lyricsMode: {
-      active: 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl landscape:max-md:text-2xl',
-      inactive: 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl landscape:max-md:text-lg',
-    },
-    normalMode: {
-      active: 'text-3xl sm:text-5xl md:text-6xl lg:text-7xl landscape:max-md:text-xl',
-      inactive: 'text-lg sm:text-3xl md:text-4xl lg:text-5xl landscape:max-md:text-base',
-    },
-    plain: 'text-lg sm:text-xl md:text-2xl',
-  },
-};
+/**
+ * 1〜100 のフォントサイズ値を拡大倍率 (0.5x 〜 2.0x) に変換
+ * - 1: 0.5x (50%)
+ * - 50: 1.0x (100%, 標準)
+ * - 100: 2.0x (200%)
+ */
+export function getLyricFontScale(value: number): number {
+  const clamped = Math.max(1, Math.min(100, isNaN(value) ? 50 : value));
+  if (clamped <= 50) {
+    return 0.5 + ((clamped - 1) / 49) * 0.5;
+  } else {
+    return 1.0 + ((clamped - 50) / 50) * 1.0;
+  }
+}
 
 export const LyricViewer: React.FC<LyricViewerProps> = ({
   lyricsData,
@@ -86,14 +34,28 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
   isLoading,
   onSeek,
   isLyricsMode = false,
-  fontSize = 'medium',
+  fontSize = 50,
   onFontSizeChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [isFontPopoverOpen, setIsFontPopoverOpen] = useState(false);
   const [userIsScrolling, setUserIsScrolling] = useState(false);
   const userScrollTimeoutRef = useRef<any>(null);
   const isInitialMountRef = useRef(true);
+
+  // ポップオーバー外クリック検知
+  useEffect(() => {
+    if (!isFontPopoverOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setIsFontPopoverOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFontPopoverOpen]);
 
   // アクティブ行の位置へコンテナをスクロール（中央揃え）
   const scrollToLine = useCallback((index: number, smooth: boolean = true) => {
@@ -219,7 +181,7 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
     );
   }
 
-  const currentStyles = FONT_SIZE_STYLES[fontSize] || FONT_SIZE_STYLES.medium;
+  const fontScale = getLyricFontScale(fontSize);
 
   // 4. プレーンテキスト歌詞（同期なし）
   if (lyricsData.syncedLyrics.length === 0 && lyricsData.plainLyrics) {
@@ -231,17 +193,92 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
             <span>通常歌詞（タイムコード同期なし）</span>
           </div>
           {onFontSizeChange && (
-            <button
-              onClick={() => onFontSizeChange(currentStyles.next)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95"
-              title={`文字サイズ: ${currentStyles.label}（クリックで切り替え）`}
-            >
-              <Type className="w-3.5 h-3.5 text-spotify-green" />
-              <span className="text-[11px]">{currentStyles.label}</span>
-            </button>
+            <div className="relative" ref={popoverRef}>
+              <button
+                onClick={() => setIsFontPopoverOpen(!isFontPopoverOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95"
+                title={`文字サイズ: ${fontSize}（クリックで調整）`}
+              >
+                <Type className="w-3.5 h-3.5 text-spotify-green" />
+                <span className="text-[11px] font-mono">{fontSize}</span>
+              </button>
+
+              {/* ポップオーバー */}
+              <AnimatePresence>
+                {isFontPopoverOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    className="absolute top-8 right-0 z-30 w-64 bg-neutral-950/95 border border-white/15 rounded-2xl p-3.5 shadow-2xl backdrop-blur-2xl text-white"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
+                        <Type className="w-3.5 h-3.5 text-spotify-green" />
+                        <span>文字サイズ: {fontSize} / 100</span>
+                      </div>
+                      <button
+                        onClick={() => setIsFontPopoverOpen(false)}
+                        className="p-1 text-neutral-400 hover:text-white rounded-md hover:bg-white/10 transition"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <button
+                        onClick={() => onFontSizeChange(Math.max(1, fontSize - 5))}
+                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-neutral-300 hover:text-white text-xs font-bold transition shrink-0"
+                        title="-5"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="range"
+                        min="1"
+                        max="100"
+                        value={fontSize}
+                        onChange={(e) => onFontSizeChange(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+                        className="flex-1 accent-spotify-green cursor-pointer h-1.5 bg-neutral-800 rounded-lg"
+                      />
+                      <button
+                        onClick={() => onFontSizeChange(Math.min(100, fontSize + 5))}
+                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-neutral-300 hover:text-white text-xs font-bold transition shrink-0"
+                        title="+5"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex justify-between gap-1 pt-2 border-t border-white/10">
+                      {[
+                        { val: 1, label: '最小' },
+                        { val: 30, label: '小' },
+                        { val: 50, label: '標準' },
+                        { val: 75, label: '大' },
+                        { val: 100, label: '最大' },
+                      ].map(({ val, label }) => (
+                        <button
+                          key={val}
+                          onClick={() => onFontSizeChange(val)}
+                          className={`px-1.5 py-1 rounded text-[10px] font-medium transition ${
+                            fontSize === val
+                              ? 'bg-spotify-green text-black font-bold shadow'
+                              : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
-        <div className={`overflow-y-auto flex-1 pr-2 space-y-4 text-neutral-200 ${currentStyles.plain} leading-relaxed whitespace-pre-line font-medium selection:bg-spotify-green/30`}>
+        <div
+          className="overflow-y-auto flex-1 pr-2 space-y-4 text-neutral-200 leading-relaxed whitespace-pre-line font-medium selection:bg-spotify-green/30"
+          style={{ fontSize: `calc(clamp(0.95rem, 1.8vw, 1.25rem) * ${fontScale})` }}
+        >
           {lyricsData.plainLyrics}
         </div>
       </div>
@@ -255,16 +292,89 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
       <div className="absolute top-0 left-0 right-0 h-10 sm:h-16 md:h-20 landscape:max-md:h-8 bg-gradient-to-b from-[#121212] via-[#121212]/80 to-transparent pointer-events-none z-10" />
       <div className="absolute bottom-0 left-0 right-0 h-10 sm:h-16 md:h-20 landscape:max-md:h-8 bg-gradient-to-t from-[#121212] via-[#121212]/80 to-transparent pointer-events-none z-10" />
 
-      {/* 右上の文字サイズクイック切替ボタン */}
+      {/* 右上の文字サイズクイック調整ボタン & ポップオーバー */}
       {onFontSizeChange && (
-        <button
-          onClick={() => onFontSizeChange(currentStyles.next)}
-          className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95 shadow-lg"
-          title={`文字サイズ: ${currentStyles.label}（クリックで「${FONT_SIZE_STYLES[currentStyles.next].label}」へ変更）`}
-        >
-          <Type className="w-3 h-3 text-spotify-green" />
-          <span className="text-[10px] font-medium">{currentStyles.label}</span>
-        </button>
+        <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-30" ref={popoverRef}>
+          <button
+            onClick={() => setIsFontPopoverOpen(!isFontPopoverOpen)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition active:scale-95 shadow-lg"
+            title={`文字サイズ: ${fontSize}（クリックで調整）`}
+          >
+            <Type className="w-3.5 h-3.5 text-spotify-green" />
+            <span className="text-[11px] font-mono font-medium">{fontSize}</span>
+          </button>
+
+          {/* クイック調整ポップオーバー */}
+          <AnimatePresence>
+            {isFontPopoverOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                className="absolute top-9 right-0 w-64 bg-neutral-950/95 border border-white/15 rounded-2xl p-3.5 shadow-2xl backdrop-blur-2xl text-white"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-200">
+                    <Type className="w-3.5 h-3.5 text-spotify-green" />
+                    <span>文字サイズ: {fontSize} / 100</span>
+                  </div>
+                  <button
+                    onClick={() => setIsFontPopoverOpen(false)}
+                    className="p-1 text-neutral-400 hover:text-white rounded-md hover:bg-white/10 transition"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <button
+                    onClick={() => onFontSizeChange(Math.max(1, fontSize - 5))}
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-neutral-300 hover:text-white text-xs font-bold transition shrink-0"
+                    title="-5"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={fontSize}
+                    onChange={(e) => onFontSizeChange(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+                    className="flex-1 accent-spotify-green cursor-pointer h-1.5 bg-neutral-800 rounded-lg"
+                  />
+                  <button
+                    onClick={() => onFontSizeChange(Math.min(100, fontSize + 5))}
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-neutral-300 hover:text-white text-xs font-bold transition shrink-0"
+                    title="+5"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+                {/* プリセット */}
+                <div className="flex justify-between gap-1 pt-2 border-t border-white/10">
+                  {[
+                    { val: 1, label: '最小' },
+                    { val: 30, label: '小' },
+                    { val: 50, label: '標準' },
+                    { val: 75, label: '大' },
+                    { val: 100, label: '最大' },
+                  ].map(({ val, label }) => (
+                    <button
+                      key={val}
+                      onClick={() => onFontSizeChange(val)}
+                      className={`px-1.5 py-1 rounded text-[10px] font-medium transition ${
+                        fontSize === val
+                          ? 'bg-spotify-green text-black font-bold shadow'
+                          : 'bg-white/5 text-neutral-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* スクロール領域 */}
@@ -300,12 +410,21 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
                 className={
                   isLyricsMode
                     ? isActive
-                      ? `text-white font-black ${currentStyles.lyricsMode.active} tracking-tight leading-snug drop-shadow-[0_4px_24px_rgba(255,255,255,0.4)]`
-                      : `text-neutral-400 font-extrabold ${currentStyles.lyricsMode.inactive} tracking-tight leading-snug hover:text-neutral-200`
+                      ? 'text-white font-black tracking-tight leading-snug drop-shadow-[0_4px_24px_rgba(255,255,255,0.4)]'
+                      : 'text-neutral-400 font-extrabold tracking-tight leading-snug hover:text-neutral-200'
                     : isActive
-                    ? `text-white font-black ${currentStyles.normalMode.active} tracking-tight leading-snug drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)]`
-                    : `text-neutral-400 font-bold ${currentStyles.normalMode.inactive} tracking-tight leading-snug hover:text-neutral-200`
+                    ? 'text-white font-black tracking-tight leading-snug drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)]'
+                    : 'text-neutral-400 font-bold tracking-tight leading-snug hover:text-neutral-200'
                 }
+                style={{
+                  fontSize: isLyricsMode
+                    ? isActive
+                      ? `calc(clamp(1.75rem, 4.5vw, 4.25rem) * ${fontScale})`
+                      : `calc(clamp(1.2rem, 3.2vw, 2.75rem) * ${fontScale})`
+                    : isActive
+                    ? `calc(clamp(1.3rem, 2.8vw, 2.6rem) * ${fontScale})`
+                    : `calc(clamp(0.95rem, 2.1vw, 1.85rem) * ${fontScale})`,
+                }}
               >
                 {line.text || '•••'}
               </motion.div>
