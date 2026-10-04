@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header } from './components/Header';
 import { PlayerCard } from './components/PlayerCard';
 import { LyricViewer } from './components/LyricViewer';
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
   const [isLyricsMode, setIsLyricsMode] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<'player' | 'lyrics'>('player');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const [offsetMs, setOffsetMs] = useState<number>(() => {
     const saved = localStorage.getItem(OFFSET_STORAGE_KEY);
@@ -68,6 +70,19 @@ export const App: React.FC = () => {
     }
   };
 
+  // ネットワーク接続状態の監視
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   // 初回マウント時のコールバック処理 & 認証状態チェック
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,8 +91,9 @@ export const App: React.FC = () => {
         try {
           await handleSpotifyCallback();
           setIsDemoMode(false);
-        } catch (err: any) {
-          alert(err.message || '認証の完了に失敗しました。');
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : '認証の完了に失敗しました。';
+          alert(errorMsg);
         }
       } else {
         // 未認証かつClient ID未設定の場合は、最初からデモモードにして動作を見せる
@@ -148,18 +164,32 @@ export const App: React.FC = () => {
         activeMobileTab={activeMobileTab}
         onChangeMobileTab={setActiveMobileTab}
         header={
-          <Header
-            isWakeLocked={isWakeLocked}
-            onToggleWakeLock={toggleWakeLock}
-            wakeLockSupported={wakeLockSupported}
-            isDemoMode={isDemoMode}
-            onToggleDemoMode={handleToggleDemoMode}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            isLyricsMode={isLyricsMode}
-            onToggleLyricsMode={handleToggleLyricsMode}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={handleToggleFullscreen}
-          />
+          <>
+            <AnimatePresence>
+              {isOffline && (
+                <motion.div
+                  initial={{ y: -50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -50, opacity: 0 }}
+                  className="fixed top-0 left-0 right-0 z-[9999] bg-red-600/95 backdrop-blur-md text-white text-xs sm:text-sm font-medium py-1.5 px-4 text-center shadow-lg pt-[max(0.375rem,env(safe-area-inset-top,0px))]"
+                >
+                  インターネット接続がありません。一部の機能が利用できない可能性があります。
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <Header
+              isWakeLocked={isWakeLocked}
+              onToggleWakeLock={toggleWakeLock}
+              wakeLockSupported={wakeLockSupported}
+              isDemoMode={isDemoMode}
+              onToggleDemoMode={handleToggleDemoMode}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              isLyricsMode={isLyricsMode}
+              onToggleLyricsMode={handleToggleLyricsMode}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={handleToggleFullscreen}
+            />
+          </>
         }
         player={
           <PlayerCard

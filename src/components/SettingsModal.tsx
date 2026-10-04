@@ -300,8 +300,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={async () => {
                 try {
                   await initiateSpotifyLogin();
-                } catch (err: any) {
-                  alert(err.message || 'ログイン開始に失敗しました。');
+                } catch (err) {
+                  const errorMsg = err instanceof Error ? err.message : 'ログイン開始に失敗しました。';
+                  alert(errorMsg);
                 }
               }}
               className="px-5 py-2 bg-spotify-green hover:brightness-110 text-black font-bold text-sm rounded-lg transition shadow-md shadow-spotify-green/20 flex items-center gap-2"

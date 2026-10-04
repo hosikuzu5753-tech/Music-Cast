@@ -41,8 +41,9 @@ export const Header: React.FC<HeaderProps> = ({
       }
       try {
         await initiateSpotifyLogin();
-      } catch (err: any) {
-        alert(err.message || 'ログイン開始に失敗しました。');
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'ログイン開始に失敗しました。';
+        alert(errorMsg);
       }
     }
   };

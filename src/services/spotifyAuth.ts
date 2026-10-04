@@ -231,53 +231,67 @@ export function getSavedTokens(): AuthTokens | null {
   };
 }
 
+let refreshTokenPromise: Promise<string | null> | null = null;
+
 /**
  * リフレッシュトークンを使って新しいアクセストークンを取得
  */
 export async function refreshAccessToken(): Promise<string | null> {
-  const tokens = getSavedTokens();
-  const clientId = getStoredClientId();
-
-  if (!tokens || !tokens.refreshToken || !clientId) {
-    return null;
+  if (refreshTokenPromise) {
+    return refreshTokenPromise;
   }
 
-  const body = new URLSearchParams({
-    client_id: clientId,
-    grant_type: 'refresh_token',
-    refresh_token: tokens.refreshToken,
-  });
+  refreshTokenPromise = (async () => {
+    const tokens = getSavedTokens();
+    const clientId = getStoredClientId();
 
-  try {
-    const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
-      // 400等でリフレッシュトークンが無効になった場合はログアウト
-      if (response.status === 400) {
-        logout();
-      }
+    if (!tokens || !tokens.refreshToken || !clientId) {
+      refreshTokenPromise = null;
       return null;
     }
 
-    const data = await response.json();
-    const newTokens: AuthTokens = {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token || tokens.refreshToken,
-      expiresAt: Date.now() + data.expires_in * 1000,
-    };
+    const body = new URLSearchParams({
+      client_id: clientId,
+      grant_type: 'refresh_token',
+      refresh_token: tokens.refreshToken,
+    });
 
-    saveTokens(newTokens);
-    return newTokens.accessToken;
-  } catch (error) {
-    console.error('トークンリフレッシュエラー:', error);
-    return null;
-  }
+    try {
+      const response = await fetch(SPOTIFY_TOKEN_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        // 400等でリフレッシュトークンが無効になった場合はログアウト
+        if (response.status === 400) {
+          logout();
+        }
+        refreshTokenPromise = null;
+        return null;
+      }
+
+      const data = await response.json();
+      const newTokens: AuthTokens = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token || tokens.refreshToken,
+        expiresAt: Date.now() + data.expires_in * 1000,
+      };
+
+      saveTokens(newTokens);
+      refreshTokenPromise = null;
+      return newTokens.accessToken;
+    } catch (error) {
+      console.error('トークンリフレッシュエラー:', error);
+      refreshTokenPromise = null;
+      return null;
+    }
+  })();
+
+  return refreshTokenPromise;
 }
 
 /**

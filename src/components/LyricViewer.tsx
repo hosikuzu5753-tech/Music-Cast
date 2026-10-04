@@ -42,7 +42,7 @@ export const LyricViewer: React.FC<LyricViewerProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
   const [isFontPopoverOpen, setIsFontPopoverOpen] = useState(false);
   const [userIsScrolling, setUserIsScrolling] = useState(false);
-  const userScrollTimeoutRef = useRef<any>(null);
+  const userScrollTimeoutRef = useRef<number | NodeJS.Timeout | null>(null);
   const isInitialMountRef = useRef(true);
 
   // ポップオーバー外クリック検知

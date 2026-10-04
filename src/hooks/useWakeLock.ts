@@ -4,7 +4,7 @@ export function useWakeLock() {
   const [isSupported, setIsSupported] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const wakeLockRef = useRef<any>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const shouldLockRef = useRef(false);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useWakeLock() {
 
     try {
       shouldLockRef.current = true;
-      const lock = await (navigator as any).wakeLock.request('screen');
+      const lock = await navigator.wakeLock.request('screen');
       wakeLockRef.current = lock;
       setIsActive(true);
       setErrorMessage(null);
@@ -33,10 +33,11 @@ export function useWakeLock() {
       });
 
       return true;
-    } catch (err: any) {
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Wake Lock の取得に失敗しました。';
       console.warn('Wake Lock request failed:', err);
       setIsActive(false);
-      setErrorMessage(err.message || 'Wake Lock の取得に失敗しました。');
+      setErrorMessage(errorMsg);
       return false;
     }
   }, []);

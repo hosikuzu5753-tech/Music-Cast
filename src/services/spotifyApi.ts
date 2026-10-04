@@ -26,6 +26,11 @@ async function spotifyFetch(endpoint: string, options: RequestInit = {}): Promis
     return null;
   }
 
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After');
+    throw new Error(`429 Too Many Requests: Retry after ${retryAfter || 'unknown'} seconds`);
+  }
+
   return res;
 }
 

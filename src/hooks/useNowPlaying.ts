@@ -46,6 +46,9 @@ export function useNowPlaying({ isDemoMode, demoTrackIndex = 0 }: UseNowPlayingP
 
     let isMounted = true;
 
+    let timeoutId: number | NodeJS.Timeout;
+    let backoffMs = 1000; // 初期ポーリング間隔
+
     const poll = async () => {
       if (!isAuthenticated()) {
         if (isMounted) {
@@ -61,6 +64,9 @@ export function useNowPlaying({ isDemoMode, demoTrackIndex = 0 }: UseNowPlayingP
       try {
         const data: CurrentlyPlaying | null = await fetchCurrentlyPlaying();
         if (!isMounted) return;
+
+        // 成功したらバックオフリセット
+        backoffMs = 1000;
 
         if (data && data.item) {
           // 曲が変わった場合
@@ -86,19 +92,33 @@ export function useNowPlaying({ isDemoMode, demoTrackIndex = 0 }: UseNowPlayingP
           isPlayingRef.current = false;
         }
       } catch (err) {
-        console.error('Spotify polling error:', err);
+        if (err instanceof Error && err.message.includes('429 Too Many Requests')) {
+          // 429エラー時はバックオフ間隔を増やす (最大約30秒)
+          const match = err.message.match(/Retry after (\d+)/);
+          if (match && match[1]) {
+            backoffMs = parseInt(match[1], 10) * 1000;
+          } else {
+            backoffMs = Math.min(backoffMs * 2, 30000);
+          }
+          console.warn(`Spotify 429 Rate Limit hit. Backing off for ${backoffMs}ms`);
+        } else {
+          console.error('Spotify polling error:', err);
+        }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+          // 処理が完了してから次の呼び出しを予約する（再帰的ポーリング）
+          timeoutId = setTimeout(poll, backoffMs);
+        }
       }
     };
 
+    // 初回実行
     poll();
-    // 1秒間隔でポーリング
-    const interval = setInterval(poll, 1000);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [isDemoMode]);
 
